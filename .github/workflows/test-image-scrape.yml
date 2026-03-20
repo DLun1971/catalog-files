@@ -28,4 +28,4 @@ jobs:
           git config user.email "actions@github.com"
           git add part-images.json
           git diff --staged --quiet || git commit -m "update part-images.json"
-          git push
+          git push https://x-access-token:${{ secrets.PAT }}@github.com/DLun1971/catalog-files.git
