@@ -1,8 +1,12 @@
 const fetch = (...args) => import('node-fetch').then(({default: f}) => f(...args));
 const fs = require('fs');
+const path = require('path');
 
 const PAT = process.env.GITHUB_TOKEN;
 const BASE = 'https://api.github.com/repos/dlun1971/pcr-catalog/contents/data/';
+const IMAGES_DIR = 'images';
+
+if (!fs.existsSync(IMAGES_DIR)) fs.mkdirSync(IMAGES_DIR);
 
 async function getDataFiles() {
   const r = await fetch(BASE, { headers: { Authorization: 'token ' + PAT, 'User-Agent': 'catalog-scraper' } });
@@ -25,9 +29,24 @@ async function getImageUrl(part) {
   try {
     const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' } });
     const text = await r.text();
-    const img = text.match(/ccstore\/v1\/images\/\?source=[^"'\\]+/i);
-    if (img) return 'https://shop.motorolasolutions.com/' + img[0];
+    const img = text.match(/ccstore\/v1\/images\/\?source=([^"'\\]+)/i);
+    if (img) return 'https://shop.motorolasolutions.com/ccstore/v1/images/?source=' + img[1];
     return null;
+  } catch(e) {
+    return null;
+  }
+}
+
+async function downloadImage(part, url) {
+  try {
+    const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+    if (!r.ok) return null;
+    const contentType = r.headers.get('content-type') || '';
+    const ext = contentType.includes('png') ? '.png' : '.jpg';
+    const filepath = path.join(IMAGES_DIR, part + ext);
+    const buffer = await r.buffer();
+    fs.writeFileSync(filepath, buffer);
+    return 'https://dlun1971.github.io/catalog-files/' + filepath;
   } catch(e) {
     return null;
   }
@@ -49,13 +68,23 @@ async function getImageUrl(part) {
   const result = {};
   let found = 0;
   for (const part of unique) {
-    const url = await getImageUrl(part);
-    if (url) { result[part] = url; found++; }
-    console.log(part + ': ' + (url ? 'OK' : 'NOT FOUND'));
+    const cdnUrl = await getImageUrl(part);
+    if (cdnUrl) {
+      const localUrl = await downloadImage(part, cdnUrl);
+      if (localUrl) {
+        result[part] = localUrl;
+        found++;
+        console.log(part + ': OK -> ' + localUrl);
+      } else {
+        console.log(part + ': CDN OK but download failed');
+      }
+    } else {
+      console.log(part + ': NOT FOUND');
+    }
     await new Promise(r => setTimeout(r, 300));
   }
 
-  console.log('Images found: ' + found + '/' + unique.length);
+  console.log('Images downloaded: ' + found + '/' + unique.length);
   fs.writeFileSync('part-images.json', JSON.stringify(result, null, 2));
   console.log('Written to part-images.json');
 })();
