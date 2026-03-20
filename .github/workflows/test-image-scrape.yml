@@ -1,36 +1,21 @@
-const fetch = (...args) => import('node-fetch').then(({default: f}) => f(...args));
+name: Test Image Scrape
 
-const PARTS = ['PMNN4807', 'PMMN4128', 'PMLN8300', 'PMKN4265', 'PMPN4576A'];
+on:
+  workflow_dispatch:
 
-async function getImageUrl(part) {
-  const urls = [
-    'https://www.motorolasolutions.com/en_us/products/' + part + '.html',
-    'https://shop.motorolasolutions.com/p/' + part
-  ];
-  for (const url of urls) {
-    try {
-      const r = await fetch(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Accept': 'text/html'
-        },
-        redirect: 'follow'
-      });
-      const text = await r.text();
-      const og = text.match(/<meta[^>]+property="og:image"[^>]+content="([^"]+)"/i);
-      const img = text.match(/ccstore\/v1\/images\/[^"']+/i);
-      console.log(part + ' [' + url + ']');
-      console.log('  og:image: ' + (og ? og[1] : 'none'));
-      console.log('  ccstore:  ' + (img ? img[0] : 'none'));
-    } catch(e) {
-      console.log(part + ' ERROR: ' + e.message);
-    }
-  }
-}
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-(async () => {
-  for (const part of PARTS) {
-    await getImageUrl(part);
-    await new Promise(r => setTimeout(r, 1000));
-  }
-})();
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install node-fetch
+
+      - name: Run test scrape
+        run: node scripts/test-scrape.js
