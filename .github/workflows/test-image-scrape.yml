@@ -17,5 +17,15 @@ jobs:
       - name: Install dependencies
         run: npm install node-fetch
 
-      - name: Run test scrape
+      - name: Run scrape
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node scripts/test-scrape.js
+
+      - name: Commit part-images.json
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add part-images.json
+          git diff --staged --quiet || git commit -m "update part-images.json"
+          git push
