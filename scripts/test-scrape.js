@@ -1,23 +1,24 @@
 const fetch = (...args) => import('node-fetch').then(({default: f}) => f(...args));
 
-const PARTS = ['PMNN4807', 'PMMN4128', 'PMLN8300', 'PMKN4265', 'PMPN4576A'];
+const PARTS = ['PMNN4807'];
 
 async function getImageUrl(part) {
-  const url = 'https://shop.motorolasolutions.com/ccstore/v1/products/' + part;
+  const url = 'https://www.motorolasolutions.com/en_us/products/' + part + '.html';
   try {
-    const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
-    const d = await r.json();
-    const img = d.primaryFullImageURL || d.primarySmallImageURL || d.primaryThumbImageURL || null;
-    console.log(part + ': ' + (img || 'NOT FOUND'));
-    return img;
+    const r = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'text/html'
+      },
+      redirect: 'follow'
+    });
+    console.log('Status:', r.status, r.url);
+    const text = await r.text();
+    console.log('Body length:', text.length);
+    console.log('First 500 chars:', text.substring(0, 500));
   } catch(e) {
-    console.log(part + ': ERROR - ' + e.message);
-    return null;
+    console.log('ERROR:', e.message);
   }
 }
 
-(async () => {
-  for (const part of PARTS) {
-    await getImageUrl(part);
-  }
-})();
+(async () => { await getImageUrl('PMNN4807'); })();
