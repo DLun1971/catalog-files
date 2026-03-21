@@ -30,4 +30,5 @@ jobs:
           git config user.email "actions@github.com"
           git add images/ part-images.json
           git diff --staged --quiet || git commit -m "update images and part-images.json"
+          git pull --rebase
           git push
