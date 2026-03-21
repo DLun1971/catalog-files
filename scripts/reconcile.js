@@ -1,14 +1,23 @@
 const fetch = (...args) => import('node-fetch').then(({default: f}) => f(...args));
 const fs = require('fs');
 const PAT = process.env.PAT || process.env.GITHUB_TOKEN;
-const CATALOG_FILES_BASE = 'https://api.github.com/repos/dlun1971/catalog-files/contents/';
 
 async function getImageFiles() {
-  const r = await fetch(CATALOG_FILES_BASE + 'images', {
-    headers: { Authorization: 'token ' + PAT, 'User-Agent': 'catalog-scraper' }
-  });
-  const files = await r.json();
-  return files.filter(f => f.name.match(/\.(png|jpg|jpeg)$/i));
+  const headers = { Authorization: 'token ' + PAT, 'User-Agent': 'catalog-scraper' };
+
+  const repoRes = await fetch('https://api.github.com/repos/dlun1971/catalog-files/git/refs/heads/main', { headers });
+  const repoData = await repoRes.json();
+  const commitSha = repoData.object.sha;
+
+  const treeRes = await fetch('https://api.github.com/repos/dlun1971/catalog-files/git/trees/' + commitSha + '?recursive=1', { headers });
+  const treeData = await treeRes.json();
+
+  if (!Array.isArray(treeData.tree)) {
+    console.error('Tree API error:', JSON.stringify(treeData));
+    return [];
+  }
+
+  return treeData.tree.filter(f => f.path.startsWith('images/') && f.path.match(/\.(png|jpg|jpeg)$/i));
 }
 
 (async () => {
@@ -23,8 +32,9 @@ async function getImageFiles() {
 
   let added = 0;
   for (const file of imageFiles) {
-    const part = file.name.replace(/\.(png|jpg|jpeg)$/i, '');
-    const url = 'https://dlun1971.github.io/catalog-files/images/' + file.name;
+    const filename = file.path.replace('images/', '');
+    const part = filename.replace(/\.(png|jpg|jpeg)$/i, '');
+    const url = 'https://dlun1971.github.io/catalog-files/' + file.path;
     if (!result[part]) {
       result[part] = url;
       added++;
