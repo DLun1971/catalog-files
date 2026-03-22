@@ -7,13 +7,28 @@ async function getImageFiles() {
 
   const repoRes = await fetch('https://api.github.com/repos/dlun1971/catalog-files/git/refs/heads/main', { headers });
   const repoData = await repoRes.json();
-  const commitSha = repoData.object.sha;
+  console.log('Refs response:', JSON.stringify(repoData).substring(0, 200));
 
+  if (!repoData.object || !repoData.object.sha) {
+    console.error('Could not get commit SHA - trying branch fallback');
+    const branchRes = await fetch('https://api.github.com/repos/dlun1971/catalog-files/branches/main', { headers });
+    const branchData = await branchRes.json();
+    console.log('Branch response:', JSON.stringify(branchData).substring(0, 200));
+    if (!branchData.commit || !branchData.commit.sha) {
+      console.error('Branch API also failed');
+      return [];
+    }
+    var commitSha = branchData.commit.sha;
+  } else {
+    var commitSha = repoData.object.sha;
+  }
+
+  console.log('Commit SHA:', commitSha);
   const treeRes = await fetch('https://api.github.com/repos/dlun1971/catalog-files/git/trees/' + commitSha + '?recursive=1', { headers });
   const treeData = await treeRes.json();
 
   if (!Array.isArray(treeData.tree)) {
-    console.error('Tree API error:', JSON.stringify(treeData));
+    console.error('Tree API error:', JSON.stringify(treeData).substring(0, 300));
     return [];
   }
 
